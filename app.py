@@ -29,7 +29,7 @@ def identify_cat():
         'match_candidates': match_candidates,
         'suggested_category': '茶トラ'
     }
-
+    print("▶️ Flaskが返すデータ:", response_data)
     return jsonify(response_data)
 
 if __name__ == '__main__':
