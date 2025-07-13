@@ -18,11 +18,12 @@ def match_candidates(feature_vec, top_n=2):
     """
     ベクトルと既存猫たちの特徴を比較して類似度順に返す
     """
+    results = []
     for cat_id, vec in FAKE_DATABASE.items():
         sim = cosine_similarity(feature_vec, vec)
         results.append((cat_id, sim))
     return [
-        {"indibidual_id": cat_id, "confidence": round(sim, 2)}
+        {"individual_id": cat_id, "confidence": round(sim, 2)}
         for cat_id, sim in results[:top_n]
     ]
  

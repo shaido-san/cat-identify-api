@@ -1,6 +1,8 @@
 import os
-import hashlib
 from flask import Flask, request, jsonify
+
+from classifier import predict_category
+from identifier import extract_features, match_candidates
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
@@ -20,14 +22,15 @@ def identify_cat():
     filepath = os.path.join(UPLOAD_FOLDER, image.filename)
     image.save(filepath)
 
-    match_candidates = [
-        {'individual_id': 'abc123', 'confidence': 0.87},
-        {'individual_id': 'def456', 'confidence': 0.75}
-    ]
+    category = predict_category(image)
+
+    feature_vec = extract_features(image)
+    match_candidates_list = match_candidates(feature_vec)
+
 
     response_data = {
-        'match_candidates': match_candidates,
-        'suggested_category': '茶トラ'
+        'match_candidates': match_candidates_list,
+        'suggested_category': category
     }
     print("▶️ Flaskが返すデータ:", response_data)
     return jsonify(response_data)
