@@ -4,7 +4,7 @@ from PIL import Image
 
 def parse_annotation(file_path):
     with open(file_path, 'r') as f:
-        parts = list(map(int, f.read()).strip().split())
+        parts = list(map(int, f.read().strip().split()))
         points = list(zip(parts[1::2], parts[2::2]))
         return points
 

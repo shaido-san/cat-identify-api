@@ -5,3 +5,6 @@ __pycache__/
 env/
 venv/
 .env
+archive/
+cat_dataset/
+data/
