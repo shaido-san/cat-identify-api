@@ -1,31 +1,81 @@
-import numpy as np
-import random
-
-FAKE_DATABASE = {
-    "abc123": np.random.rand(512),
-    "def456": np.random.rand(512),
-    "ghi789": np.random.rand(512),
-}
+import torch
+import io
+import json
+import os
+from scipy.spatial.distance import cosine
+from torchvision import models, transforms
+from PIL import Image
 
 def extract_features(image_file):
-    """
-    画像から特徴ベクトルを抽出（仮：ランダム）
-    """
-    # 実際はモデルを使って画像からベクトル抽出
-    return np.random.rand(512)
+    model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+    model = torch.nn.Sequential(*list(model.children())[:-1])
+    model.eval()
 
-def match_candidates(feature_vec, top_n=2):
-    """
-    ベクトルと既存猫たちの特徴を比較して類似度順に返す
-    """
-    results = []
-    for cat_id, vec in FAKE_DATABASE.items():
-        sim = cosine_similarity(feature_vec, vec)
-        results.append((cat_id, sim))
-    return [
-        {"individual_id": cat_id, "confidence": round(sim, 2)}
-        for cat_id, sim in results[:top_n]
-    ]
- 
-def cosine_similarity(vec1, vec2):
-    return float(np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
+    preprocess = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225]),
+    ])
+
+    image = Image.open(image_file.stream).convert("RGB")
+    input_tensor = preprocess(image).unsqueeze(0)
+
+    with torch.no_grad():
+        output = model(input_tensor)
+        features = output.squeeze().numpy()
+    
+    return features.tolist()
+
+CAT_DATABASE = "cat_database.json"
+
+def register_cat(image_file, cat_name):
+    features = extract_features(image_file)
+
+    if not os.path.exists(CAT_DATABASE):
+        with open(CAT_DATABASE, "w") as f:
+            json.dump({}, f)
+    
+    with open(CAT_DATABASE, "r") as f:
+        database = json.load(f)
+    
+    if cat_name in database:
+        database[cat_name].append(features)
+    else:
+        database[cat_name] = [features]
+    
+    with open(CAT_DATABASE, "w") as f:
+        json.dump(database, f)
+    
+    return {
+        "mesage": f"{cat_name}ちゃんを登録しました!",
+        "count": len(database[cat_name])
+    }
+
+def identify_cat(image_file):
+    features = extract_features(image_file)
+
+    if not os.path.exists(CAT_DATABASE):
+        return {"message": "データベースがまだ空っぽです"}
+    
+    with open(CAT_DATABASE, "r") as f:
+        database = json.load(f)
+    
+    min_distance = float("inf")
+    best_match = None
+
+    for cat_name, feature_list in database.items():
+        for saved_feature in feature_list:
+            dist = cosine(features, saved_feature)
+            if dist < min_distance:
+                min_distance = dist
+                best_match = cat_name
+    
+    if best_match is None:
+        return {"message": "一致する猫ちゃんが見つかりませんでした"}
+    
+    return {
+        "cat": best_match,
+        "similarity": f"{(1 - min_distance) * 100:.2f}%"
+    }
