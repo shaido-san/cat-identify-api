@@ -5,6 +5,7 @@ import os
 from scipy.spatial.distance import cosine
 from torchvision import models, transforms
 from PIL import Image
+import numpy as np
 
 def extract_features(image_file):
     model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
@@ -79,3 +80,35 @@ def identify_cat(image_file):
         "cat": best_match,
         "similarity": f"{(1 - min_distance) * 100:.2f}%"
     }
+
+def save_cat_feature(name, feature_vector):
+    os.makedirs("db", exist_ok=True)
+    db_path = os.path.join("db", f"{name}.json")
+
+    with open(db_path, "w") as f:
+        json.dump(feature_vector.tolist(), f)
+    
+    print(f"{name}の特商を保存しました: {db_path}")
+
+def match_candidates(input_feature, top_n=3):
+    db_dir = "db"
+    results = []
+
+    for filename in os.listdir(db_dir):
+        if not filename.endswith(".json"):
+            continue
+
+        name = filename[:-5]
+        with open(os.path.join(db_dir, filename), "r") as f:
+            saved_vector = json.load(f)
+        
+        distance = cosine(input_feature, saved_vector)
+        similarity = 1 - distance
+
+        results.append({
+            "individual_id": name,
+            "confidence": f"{similarity * 100:.2f}%"
+        })
+
+    results.sort(key=lambda x: float(x["confidence"].rstrip("%")), reverse=True)
+    return results[:top_n]
