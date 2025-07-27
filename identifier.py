@@ -107,7 +107,8 @@ def match_candidates(input_feature, top_n=3):
 
         results.append({
             "individual_id": name,
-            "confidence": f"{similarity * 100:.2f}%"
+            "confidence": f"{similarity * 100:.2f}%",
+            "image_path": f"db/{name}/main.jpg"
         })
 
     results.sort(key=lambda x: float(x["confidence"].rstrip("%")), reverse=True)
