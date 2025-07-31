@@ -31,27 +31,22 @@ def extract_features(image_file):
 
 CAT_DATABASE = "cat_database.json"
 
-def register_cat(image_file, cat_name):
+def register_cat(image_file, individual_id):
     features = extract_features(image_file)
 
-    if not os.path.exists(CAT_DATABASE):
-        with open(CAT_DATABASE, "w") as f:
-            json.dump({}, f)
-    
-    with open(CAT_DATABASE, "r") as f:
-        database = json.load(f)
-    
-    if cat_name in database:
-        database[cat_name].append(features)
-    else:
-        database[cat_name] = [features]
-    
-    with open(CAT_DATABASE, "w") as f:
-        json.dump(database, f)
+    individual_dir = os.path.join("db", individual_id)
+    os.makedirs(individual_dir, exist_ok=True)
+
+    image = Image.open(image_file.stream).convert("RGB")
+    image.save(os.path.join(individual_dir, "main.jpg"))
+
+    with open(os.path.join(individual_dir, "features.json", "w")) as f:
+        json.dump(features, f)
     
     return {
-        "mesage": f"{cat_name}ちゃんを登録しました!",
-        "count": len(database[cat_name])
+        "mesage": f"{individual_id}ちゃんを登録しました!",
+        "image_path": f"{individual_dir}/main.jpg",
+        "feature_path": f"{individual_dir}/features.json"
     }
 
 def identify_cat(image_file):
