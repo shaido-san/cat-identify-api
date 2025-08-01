@@ -37,16 +37,22 @@ def register_cat(image_file, individual_id):
     individual_dir = os.path.join("db", individual_id)
     os.makedirs(individual_dir, exist_ok=True)
 
-    image = Image.open(image_file.stream).convert("RGB")
-    image.save(os.path.join(individual_dir, "main.jpg"))
+    exisiting = [f for f in os.listdir(individual_dir) if f.endswith(".jpg")]
+    next_id = len(exisiting) + 1
 
-    with open(os.path.join(individual_dir, "features.json", "w")) as f:
+    image_path = os.path.join(individual_dir, f"{next_id}.jpg")
+    feature_path = os.path.join(individual_dir, f"{next_id}.json")
+
+    image = Image.open(image_file.stream).convert("RGB")
+    image.save(image_path)
+
+    with open(feature_path, "w") as f:
         json.dump(features, f)
     
     return {
-        "mesage": f"{individual_id}ちゃんを登録しました!",
-        "image_path": f"{individual_dir}/main.jpg",
-        "feature_path": f"{individual_dir}/features.json"
+        "message": f"{individual_id}ちゃんを登録しました!",
+        "image_path": image_path,
+        "feature_path": feature_path
     }
 
 def identify_cat(image_file):
