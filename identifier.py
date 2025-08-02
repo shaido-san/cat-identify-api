@@ -34,14 +34,21 @@ CAT_DATABASE = "cat_database.json"
 def register_cat(image_file, individual_id):
     features = extract_features(image_file)
 
-    individual_dir = os.path.join("db", individual_id)
-    os.makedirs(individual_dir, exist_ok=True)
+    base_dir = os.path.join("db", individual_id)
+    image_dir = os.path.join(base_dir, "images")
+    feature_dir = os.path.join(base_dir, "features")
 
-    exisiting = [f for f in os.listdir(individual_dir) if f.endswith(".jpg")]
-    next_id = len(exisiting) + 1
+    os.makedirs(image_dir, exist_ok=True)
+    os.makedirs(feature_dir, exist_ok=True)
 
-    image_path = os.path.join(individual_dir, f"{next_id}.jpg")
-    feature_path = os.path.join(individual_dir, f"{next_id}.json")
+    existing_images = [f for f in os.listdir(image_dir) if f.endswith(".jpg")]
+    next_id = len(existing_images) + 1
+
+    image_filename = f"{next_id}.jpg"
+    feature_filename = f"{next_id}.json"
+
+    image_path = os.path.join(image_dir, image_filename)
+    feature_path = os.path.join(feature_dir, feature_filename)
 
     image = Image.open(image_file.stream).convert("RGB")
     image.save(image_path)
@@ -89,27 +96,37 @@ def save_cat_feature(name, feature_vector):
     with open(db_path, "w") as f:
         json.dump(feature_vector.tolist(), f)
     
-    print(f"{name}の特商を保存しました: {db_path}")
+    print(f"{name}の特徴を保存しました: {db_path}")
 
 def match_candidates(input_feature, top_n=3):
     db_dir = "db"
     results = []
 
-    for filename in os.listdir(db_dir):
-        if not filename.endswith(".json"):
+    for individual in os.listdir(db_dir):
+        feature_dir = os.path.join(db_dir, individual, "features")
+        image_dir = os.path.join(db_dir, individual, "images")
+
+        if not os.path.isdir(feature_dir) or not os.path.isdir(image_dir):
             continue
 
-        name = filename[:-5]
-        with open(os.path.join(db_dir, filename), "r") as f:
+        for filename in os.listdir(feature_dir):
+           if not filename.endswith(".json"):
+            continue
+        
+        feature_path = os.path.join(feature_dir, filename)
+        with open(feature_path, "r") as f:
             saved_vector = json.load(f)
         
         distance = cosine(input_feature, saved_vector)
         similarity = 1 - distance
 
+        image_filename = filename.replace(".json", ".jpg")
+        image_path = os.path.join(image_dir, image_filename)
+
         results.append({
-            "individual_id": name,
+            "individual_id": individual,
             "confidence": f"{similarity * 100:.2f}%",
-            "image_path": f"db/{name}/main.jpg"
+            "image_path": image_path
         })
 
     results.sort(key=lambda x: float(x["confidence"].rstrip("%")), reverse=True)
