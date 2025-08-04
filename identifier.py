@@ -1,5 +1,4 @@
 import torch
-import io
 import json
 import os
 from scipy.spatial.distance import cosine
@@ -29,8 +28,6 @@ def extract_features(image_file):
     
     return features.tolist()
 
-CAT_DATABASE = "cat_database.json"
-
 def register_cat(image_file, individual_id):
     features = extract_features(image_file)
 
@@ -41,8 +38,16 @@ def register_cat(image_file, individual_id):
     os.makedirs(image_dir, exist_ok=True)
     os.makedirs(feature_dir, exist_ok=True)
 
-    existing_images = [f for f in os.listdir(image_dir) if f.endswith(".jpg")]
-    next_id = len(existing_images) + 1
+    image_files = os.listdir(image_dir)
+    jpg_files = [f for f  in image_files if f.endswith(".jpg")]
+
+    image_numbers = []
+    for filename in jpg_files:
+        name_part = filename.split('.')[0]
+        if name_part.isdigit():
+            image_numbers.append(int(name_part))
+    
+    next_id = max(image_numbers, default=0) + 1
 
     image_filename = f"{next_id}.jpg"
     feature_filename = f"{next_id}.json"
@@ -62,41 +67,6 @@ def register_cat(image_file, individual_id):
         "feature_path": feature_path
     }
 
-def identify_cat(image_file):
-    features = extract_features(image_file)
-
-    if not os.path.exists(CAT_DATABASE):
-        return {"message": "データベースがまだ空っぽです"}
-    
-    with open(CAT_DATABASE, "r") as f:
-        database = json.load(f)
-    
-    min_distance = float("inf")
-    best_match = None
-
-    for cat_name, feature_list in database.items():
-        for saved_feature in feature_list:
-            dist = cosine(features, saved_feature)
-            if dist < min_distance:
-                min_distance = dist
-                best_match = cat_name
-    
-    if best_match is None:
-        return {"message": "一致する猫ちゃんが見つかりませんでした"}
-    
-    return {
-        "cat": best_match,
-        "similarity": f"{(1 - min_distance) * 100:.2f}%"
-    }
-
-def save_cat_feature(name, feature_vector):
-    os.makedirs("db", exist_ok=True)
-    db_path = os.path.join("db", f"{name}.json")
-
-    with open(db_path, "w") as f:
-        json.dump(feature_vector.tolist(), f)
-    
-    print(f"{name}の特徴を保存しました: {db_path}")
 
 def match_candidates(input_feature, top_n=3):
     db_dir = "db"
@@ -111,23 +81,23 @@ def match_candidates(input_feature, top_n=3):
 
         for filename in os.listdir(feature_dir):
            if not filename.endswith(".json"):
-            continue
+               continue
         
-        feature_path = os.path.join(feature_dir, filename)
-        with open(feature_path, "r") as f:
-            saved_vector = json.load(f)
+           feature_path = os.path.join(feature_dir, filename)
+           with open(feature_path, "r") as f:
+               saved_vector = json.load(f)
         
-        distance = cosine(input_feature, saved_vector)
-        similarity = 1 - distance
+           distance = cosine(input_feature, saved_vector)
+           similarity = 1 - distance
 
-        image_filename = filename.replace(".json", ".jpg")
-        image_path = os.path.join(image_dir, image_filename)
+           image_filename = filename.replace(".json", ".jpg")
+           image_path = os.path.join(image_dir, image_filename)
 
-        results.append({
-            "individual_id": individual,
-            "confidence": f"{similarity * 100:.2f}%",
-            "image_path": image_path
-        })
+           results.append({
+               "individual_id": individual,
+               "confidence": similarity,
+               "image_path": image_path
+           })
 
     results.sort(key=lambda x: float(x["confidence"].rstrip("%")), reverse=True)
     return results[:top_n]
