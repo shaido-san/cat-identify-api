@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify
 
 from classifier import predict_category
-from identifier import extract_features, match_candidates
+from identifier import extract_features, match_candidates, register_cat
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
@@ -39,23 +39,14 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 @app.route('/register', methods=['POST'])
-def register_cat():
-    print("== POST /register 受信===")
-    print("request.files:", request.files)
-    print("request/form:", request.form)
-
-    if 'image' not in request.files or 'name' not in request.form:
-        return jsonify({'erroe': '画像ファイルと名前の両方が必要です'}),400
+def register_cat_route():
+    if 'image' not in request.files or 'individual_id' not in request.form:
+        return jsonify({'error':'画像とindividual_idが必要です'}), 400
     
     image = request.files['image']
-    name = request.form['name']
+    individual_id = request.form['individual_id']
 
-    filepath = os.path.join(UPLOAD_FOLDER, image.filename)
-    image.save(filepath)
+    result = register_cat(image, individual_id)
 
-    feature_vec = extract_features(image)
-
-    from identifier import save_cat_feature
-    save_cat_feature(name, feature_vec)
-
-    return jsonify({'message': f'{name}を登録しました！'})
+    return jsonify(result)
+    
