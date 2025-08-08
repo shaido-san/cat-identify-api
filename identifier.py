@@ -102,5 +102,5 @@ def match_candidates(input_feature, top_n=3):
                "image_path": image_path
            })
 
-    results.sort(key=lambda x: float(x["confidence"].rstrip("%")), reverse=True)
+    results.sort(key=lambda x: float(x["confidence"]), reverse=True)
     return results[:top_n]

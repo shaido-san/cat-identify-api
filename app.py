@@ -35,9 +35,6 @@ def identify_cat():
     print("▶️ Flaskが返すデータ:", response_data)
     return jsonify(response_data)
 
-if __name__ == '__main__':
-    app.run(debug=True)
-
 @app.route('/register', methods=['POST'])
 def register_cat_route():
     if 'image' not in request.files or 'individual_id' not in request.form:
@@ -49,4 +46,7 @@ def register_cat_route():
     result = register_cat(image, individual_id)
 
     return jsonify(result)
+
+if __name__ == '__main__':
+    app.run(debug=True)
     
