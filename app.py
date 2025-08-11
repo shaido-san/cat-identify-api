@@ -1,11 +1,13 @@
 import os
 from flask import Flask, request, jsonify
-
+from werkzeug.utils import secure_filename
 from classifier import predict_category
 from identifier import extract_features, match_candidates, register_cat
 
 app = Flask(__name__)
-UPLOAD_FOLDER = 'uploads'
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route('/identify', methods=['POST'])
@@ -19,7 +21,10 @@ def identify_cat():
         return jsonify({'error':'画像ファイルが必要です'}), 400
     
     image = request.files['image']
-    filepath = os.path.join(UPLOAD_FOLDER, image.filename)
+    filename = secure_filename(image.filename)
+    if not filename:
+        return jsonify({'error': 'ファイルが不正です'}), 400
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
     image.save(filepath)
 
     category = predict_category(image)

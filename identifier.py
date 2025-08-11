@@ -6,6 +6,10 @@ from torchvision import models, transforms
 from PIL import Image
 import numpy as np
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_DIR = os.path.join(BASE_DIR, "db")
+os.makedirs(DB_DIR, exist_ok=True)
+
 # ResNet18で画像特徴ベクトルを抽出（PIL + torch）
 def extract_features(image_file):
     model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
@@ -33,7 +37,7 @@ def extract_features(image_file):
 def register_cat(image_file, individual_id):
     features = extract_features(image_file)
 
-    base_dir = os.path.join("db", individual_id)
+    base_dir = os.path.join(DB_DIR, individual_id)
     image_dir = os.path.join(base_dir, "images")
     feature_dir = os.path.join(base_dir, "features")
 
@@ -72,7 +76,7 @@ def register_cat(image_file, individual_id):
 
 # 入力ベクトルに最も近い候補をDBから探して返す
 def match_candidates(input_feature, top_n=3):
-    db_dir = "db"
+    db_dir = DB_DIR
     results = []
 
     for individual in os.listdir(db_dir):
@@ -102,5 +106,5 @@ def match_candidates(input_feature, top_n=3):
                "image_path": image_path
            })
 
-    results.sort(key=lambda x: float(x["confidence"]), reverse=True)
+    results.sort(key=lambda x: x["confidence"], reverse=True)
     return results[:top_n]
