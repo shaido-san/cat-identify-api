@@ -1,12 +1,14 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, abort
 from werkzeug.utils import secure_filename
 from classifier import predict_category
 from identifier import extract_features, match_candidates, register_cat
 
+
 app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_DIR = os.path.join(BASE_DIR, "db")
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -51,6 +53,18 @@ def register_cat_route():
     result = register_cat(image, individual_id)
 
     return jsonify(result)
+
+@app.route('/media/<path:relpath>')
+def media(relpath):
+    safe_root = DB_DIR
+    abs_path = os.path.abspath(os.path.join(safe_root, relpath))
+    if not abs_path.startswith(os.path.abspath(safe_root)):
+        abort(403)
+    
+    directory, filename = os.path.split(abs_path)
+    if not os.path.exists(abs_path):
+        abort(404)
+    return send_from_directory(directory, filename)
 
 if __name__ == '__main__':
     app.run(debug=True)

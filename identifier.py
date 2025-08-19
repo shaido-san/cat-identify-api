@@ -1,10 +1,12 @@
 import torch
 import json
 import os
+import numpy as np
 from scipy.spatial.distance import cosine
 from torchvision import models, transforms
 from PIL import Image
-import numpy as np
+from urllib.parse import quote
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(BASE_DIR, "db")
@@ -99,11 +101,13 @@ def match_candidates(input_feature, top_n=3):
 
            image_filename = filename.replace(".json", ".jpg")
            image_path = os.path.join(image_dir, image_filename)
+           image_ulr = "/media/" + quote(os.path.relpath(image_path, DB_DIR).replace("\\", "/"))
 
            results.append({
                "individual_id": individual,
                "confidence": similarity,
-               "image_path": image_path
+               "image_path": image_path,
+               "image_url":image_ulr
            })
 
     results.sort(key=lambda x: x["confidence"], reverse=True)
