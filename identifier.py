@@ -13,7 +13,7 @@ DB_DIR = os.path.join(BASE_DIR, os.path.join(BASE_DIR, "db"))
 os.makedirs(DB_DIR, exist_ok=True)
 
 try:
-    RESNET = models.resnet18(wights=models.ResNet18_Weights.DEEFAULT)
+    RESNET = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
     RESNET = models.resnet18(pretrained=True)
 except Exception:
     RESNET = torch.nn.Sequential(*list(RESNET.children())[:-1])

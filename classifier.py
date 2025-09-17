@@ -1,7 +1,7 @@
 import torch
 from pathlib import Path
 import torchvision.transforms as T
-import torchvision import models
+from torchvision import models
 from PIL import Image
 
 MODEL_PATH = Path(__file__).parent / "models" /"cat_classifier.pth"
