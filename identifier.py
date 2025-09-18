@@ -1,28 +1,28 @@
-import torch
-import json
 import os
+import json
 import numpy as np
-from scipy.spatial.distance import cosine
+import torch
 from torchvision import models, transforms
 from PIL import Image
 from urllib.parse import quote
-
+from scipy.spatial.distance import cosine as cosine
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_DIR = os.path.join(BASE_DIR, os.path.join(BASE_DIR, "db"))
+DB_DIR = os.environ.get("DB_DIR", os.path.join(BASE_DIR, "db"))
 os.makedirs(DB_DIR, exist_ok=True)
 
 try:
     RESNET = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
-    RESNET = models.resnet18(pretrained=True)
 except Exception:
-    RESNET = torch.nn.Sequential(*list(RESNET.children())[:-1])
-    RESNET.eval()
-    PREPROCESS = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    RESNET = models.resnet18(pretrained=True)
+RESNET = torch.nn.Sequential(*list(RESNET.children())[:-1])
+RESNET.eval()
+
+PREPROCESS = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
 def open_pil(image_file):
@@ -33,14 +33,14 @@ def open_pil(image_file):
     return Image.open(image_file).convert("RGB")
 
 def extract_features(image_file):
-    image = open_pil(image)
+    image = open_pil(image_file)
     input_tensor = PREPROCESS(image).unsqueeze(0)
-    with torch.no_grad:
+    with torch.no_grad():
         output = RESNET(input_tensor)
         features = output.squeeze().cpu().numpy()
     return features.tolist()
 
-def individual_dif(individual_id: str) -> str:
+def individual_dir(individual_id: str) -> str:
     image_dir = os.path.join(DB_DIR, individual_id, "images")
     feature_dir = os.path.join(DB_DIR, individual_id, "features")
     os.makedirs(image_dir, exist_ok=True)
@@ -59,8 +59,9 @@ def load_centroid(individual_id: str):
             data = json.load(f)
         vec = np.array(data.get("vector", []), dtype=np.float32)
         n = int(data.get("n", 0))
-        if vec.size == 0 or n<= 0:
-            return vec, n
+        if vec.size == 0 or n <= 0:
+            return None
+        return vec, n
     except Exception:
         return None
 
@@ -82,7 +83,7 @@ def update_centroid_incremental(individual_id: str, new_vec: np.ndarray):
 def register_cat(image_file, individual_id):
     features = np.array(extract_features(image_file), dtype=np.float32)
 
-    base_dir = individual_id(individual_id)
+    base_dir = individual_dir(individual_id)
     image_dir = os.path.join(base_dir, "images")
     feature_dir = os.path.join(base_dir, "features")
 
@@ -90,18 +91,18 @@ def register_cat(image_file, individual_id):
     for f in os.listdir(image_dir):
         if f.endswith(".jpg"):
             jpg_files.append(f)
-    
+
     image_numbers = []
     for filename in jpg_files:
         name_part = filename.split(".")[0]
         if name_part.isdigit():
             image_numbers.append(int(name_part))
-    
+
     if len(image_numbers) == 0:
         next_id = 1
     else:
         next_id = max(image_numbers) + 1
-    
+
     image_path = os.path.join(image_dir, f"{next_id}.jpg")
     feature_path = os.path.join(feature_dir, f"{next_id}.json")
 
@@ -110,20 +111,37 @@ def register_cat(image_file, individual_id):
             image_file.stream.seek(0)
         except Exception:
             pass
-    
+
     img = open_pil(image_file)
     img.save(image_path)
 
     with open(feature_path, "w") as f:
         json.dump(features.tolist(), f)
-    
+
     update_centroid_incremental(individual_id, features)
 
     return {
-        "message": f"{individual_id}ちゃんを登録しました！",
+        "message": f"{individual_id}ちゃんを登録しました!",
         "image_path": image_path,
         "feature_path": feature_path,
     }
+
+def recent_image_path(image_dir: str):
+    max_n = -1
+    latest = None
+    for f in os.listdir(image_dir):
+        if not f.endswith(".jpg"):
+            continue
+        name = f.split(".")[0]
+        if not name.isdigit():
+            continue
+        n = int(name)
+        if n > max_n:
+            max_n = n
+            latest = f
+    if latest is None:
+        return None
+    return os.path.join(image_dir, latest)
 
 def match_candidates(input_feature, top_n=3, threshold=None):
     if isinstance(input_feature, list):
@@ -176,5 +194,3 @@ def match_candidates(input_feature, top_n=3, threshold=None):
 
     results.sort(key=lambda x: x["confidence"], reverse=True)
     return results[:top_n]
-
-
