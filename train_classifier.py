@@ -69,4 +69,5 @@ def evaluate(model, loader, criterion, device):
 
 def main():
     p = argparse.ArgumentParser()
-    
+    p.add_argument("--data-dir", default="data/category", help="クラス別フォルダの親ディレクトリ")
+
