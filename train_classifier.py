@@ -71,4 +71,9 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--data-dir", default="data/category", help="クラス別フォルダの親ディレクトリ")
     p.add_argument("--epochs", type=int, default=8)
+    p.add_argument("--batch-size", type=int, default=32)
+    p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--val-rato", type=float, default=0.2)
+    args = p.parse_args()
+
 
