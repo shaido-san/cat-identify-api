@@ -76,4 +76,8 @@ def main():
     p.add_argument("--val-rato", type=float, default=0.2)
     args = p.parse_args()
 
+    data_dir = args.data_dir
+    out_path = Path(__file__).parent / "models" / "cat_classifier.pth"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
 
