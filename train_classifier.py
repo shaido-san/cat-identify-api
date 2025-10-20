@@ -80,4 +80,42 @@ def main():
     out_path = Path(__file__).parent / "models" / "cat_classifier.pth"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    train_loader, val_loader, class_names = build_dataloaders(
+        data_dir, batch_size=args.batch_size, val_ratio=args.val_ratio
+    )
+
+    # ResNet18 を転移学習
+    base = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+    in_features = base.fc.in_features
+    base.fc = nn.Linear(in_features, len(class_names))
+    base = base.to(device)
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(base.parameters(), lr=args.lr)
+
+    best_acc = 0.0
+    best_state = None
+
+    for epoch in range(1, args.epochs + 1):
+        tr_loss, tr_acc = train_one_epoch(base, train_loader, criterion, optimizer, device)
+        va_loss, va_acc = evaluate(base, val_loader, criterion, device)
+        print(f"[{epoch:02d}/{args.epochs}] train loss {tr_loss:.4f} acc {tr_acc:.3f} | val loss {va_loss:.4f} acc {va_acc:.3f}")
+        if va_acc > best_acc:
+            best_acc = va_acc
+            best_state = base.state_dict()
+
+    if best_state is None:
+        best_state = base.state_dict()
+
+    torch.save({
+        "model_state": best_state,
+        "class_names": class_names,
+    }, out_path)
+
+    print(f"✅ Saved model to: {out_path}  (best val acc={best_acc:.3f})")
+    print(f"✅ Classes: {class_names}")
+
+if __name__ == "__main__":
+    main()
